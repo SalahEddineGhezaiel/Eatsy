@@ -1,0 +1,170 @@
+@page "/admin/users"
+@using Eatsy.Models
+@using Eatsy.Components.UI
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@attribute [Authorize(Roles = "Admin")]
+@inject UserManager<ApplicationUser> UserManager
+@rendermode InteractiveServer
+
+<PageTitle>Gestion des utilisateurs</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="m-0">👥 Gestion des utilisateurs</h3>
+</div>
+
+@if (message != null)
+{
+    <div class="alert @(isError ? "alert-danger" : "alert-success") alert-dismissible fade show" role="alert">
+        @message
+        <button type="button" class="btn-close" @onclick="() => message = null"></button>
+    </div>
+}
+
+@if (users == null)
+{
+    <p class="text-center">Chargement des utilisateurs...</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-bordered table-striped align-middle">
+            <thead style="background-color: var(--eatsy-primary); color: white;">
+                <tr>
+                    <th>Email</th>
+                    <th class="text-center" style="width: 150px;">Rôle</th>
+                    <th class="text-center" style="width: 150px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var user in users)
+                {
+                    <tr>
+                        <td>@user.Email</td>
+                        <td class="text-center">
+                            @if (user.Roles.Contains("Admin"))
+                            {
+                                <span class="badge bg-danger">Admin</span>
+                            }
+                            else if (user.Roles.Contains("User"))
+                            {
+                                <span class="badge bg-primary">User</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Aucun</span>
+                            }
+                        </td>
+                        <td class="text-center">
+                            @if (user.Email == "admin@eatsy.com")
+                            {
+                                <button class="btn btn-danger btn-sm" disabled title="Compte protégé">
+                                    🔒 Protégé
+                                </button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-danger btn-sm"
+                                        @onclick="() => OpenDeleteConfirm(user.Id, user.Email ?? string.Empty)">
+                                    🗑️ Supprimer
+                                </button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <p class="text-muted text-end">
+        <small>Total : @users.Count utilisateur(s)</small>
+    </p>
+}
+
+<ConfirmDeleteModal @ref="deleteModal" ItemName="@userToDeleteEmail" OnConfirm="ConfirmDeleteUser" />
+
+@code {
+    private List<UserInfo>? users;
+    private string? message;
+    private bool isError;
+    private ConfirmDeleteModal? deleteModal;
+    private string? userToDeleteId;
+    private string userToDeleteEmail = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        var allUsers = UserManager.Users.ToList();
+        users = new List<UserInfo>();
+
+        foreach (var user in allUsers)
+        {
+            var roles = await UserManager.GetRolesAsync(user);
+            users.Add(new UserInfo
+            {
+                Id = user.Id,
+                Email = user.Email ?? "",
+                Roles = roles.ToList()
+            });
+        }
+    }
+
+    private async Task OpenDeleteConfirm(string userId, string userEmail)
+    {
+        userToDeleteId = userId;
+        userToDeleteEmail = userEmail;
+        await deleteModal!.Open();
+    }
+
+    private async Task ConfirmDeleteUser()
+    {
+        if (string.IsNullOrEmpty(userToDeleteId))
+            return;
+
+        await deleteModal!.Close();
+        await DeleteUser(userToDeleteId);
+    }
+
+    private async Task DeleteUser(string userId)
+    {
+        message = null;
+        var user = await UserManager.FindByIdAsync(userId);
+        if (user == null)
+        {
+            message = "Utilisateur introuvable.";
+            isError = true;
+            return;
+        }
+
+        if (user.Email == "admin@eatsy.com")
+        {
+            message = "Impossible de supprimer le compte administrateur principal.";
+            isError = true;
+            return;
+        }
+
+        var result = await UserManager.DeleteAsync(user);
+        if (result.Succeeded)
+        {
+            message = $"L'utilisateur {user.Email} a été supprimé avec succès.";
+            isError = false;
+            await LoadUsers();
+        }
+        else
+        {
+            message = "Erreur lors de la suppression : " + string.Join(", ", result.Errors.Select(e => e.Description));
+            isError = true;
+        }
+    }
+
+    private class UserInfo
+    {
+        public string Id { get; set; } = "";
+        public string Email { get; set; } = "";
+        public List<string> Roles { get; set; } = new();
+    }
+}

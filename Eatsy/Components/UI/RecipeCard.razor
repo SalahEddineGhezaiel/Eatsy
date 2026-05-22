@@ -1,0 +1,86 @@
+@using Eatsy.Models
+@inject NavigationManager Nav
+
+<div class="card eatsy-card h-100 clickable-card"
+     @onclick="() => GoToDetails()">
+    @if (!string.IsNullOrEmpty(Recipe.ImageUrl))
+    {
+        <img src="@Recipe.ImageUrl" class="card-img-top"
+             style="height:200px; object-fit:cover; width: 100%; border-top-left-radius: 12px; border-top-right-radius: 12px;" />
+    }
+    else
+    {
+        <div class="d-flex align-items-center justify-content-center"
+             style="height:200px; background:#e9ecef; width: 100%; border-top-left-radius: 12px; border-top-right-radius: 12px;">
+            <span style="font-size:3rem;">🍽️</span>
+        </div>
+    }
+
+    <div class="card-body">
+        <h3 class="card-title fw-bold" style="color: var(--eatsy-dark);">@Recipe.Name</h3>
+
+        <div class="mb-3 mt-2">
+            @if (Recipe.Category != null)
+            {
+                <span class="badge" style="background-color: var(--eatsy-secondary); font-size: 0.8rem;">
+                    @Recipe.Category.Name
+                </span>
+            }
+            @if (Recipe.CuisineType != null)
+            {
+                <span class="badge ms-1" style="background-color: var(--eatsy-secondary); font-size: 0.8rem;">
+                    @Recipe.CuisineType.Name
+                </span>
+            }
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center text-muted mt-auto">
+            <span>👥 @Recipe.NumberOfPersons pers.</span>
+            <span class="fw-bold text-danger">🔥 @CalculateTotalCalories(Recipe) kcal</span>
+        </div>
+    </div>
+
+    <div class="card-footer bg-white border-0 d-flex justify-content-end gap-2 pb-3">
+        <AuthorizeView Roles="Admin,User">
+            <button class="btn btn-outline-warning btn-sm"
+                    @onclick="() => OnEdit.InvokeAsync(Recipe)"
+                    @onclick:stopPropagation="true">
+                ✏️ Modifier
+            </button>
+
+            <button class="btn btn-outline-danger btn-sm"
+                    @onclick="() => OnDelete.InvokeAsync(Recipe)"
+                    @onclick:stopPropagation="true">
+                🗑️ Supprimer
+            </button>
+        </AuthorizeView>
+    </div>
+</div>
+
+<style>
+.clickable-card {
+    cursor: pointer;
+}
+</style>
+
+@code {
+    [Parameter] public Recipe Recipe { get; set; } = default!;
+
+    [Parameter] public EventCallback<Recipe> OnEdit { get; set; }
+    [Parameter] public EventCallback<Recipe> OnDelete { get; set; }
+
+    private double CalculateTotalCalories(Recipe recipe)
+    {
+        if (recipe.RecipeIngredients == null)
+            return 0;
+
+        return recipe.RecipeIngredients.Sum(ri =>
+            (ri.Ingredient?.CaloriesPerUnit ?? 0) / 100.0 * ri.Quantity
+        );
+    }
+
+    private void GoToDetails()
+    {
+        Nav.NavigateTo($"/recipes/{Recipe.Id}");
+    }        
+}

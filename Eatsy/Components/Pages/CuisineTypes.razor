@@ -1,0 +1,213 @@
+@page "/cuisine-types"
+@using Eatsy.Models
+@using Eatsy.Services
+@using Eatsy.Components.UI
+@rendermode InteractiveServer
+@inject ICuisineTypeService CuisineTypeService
+
+<!-- Modals -->
+<CuisineTypeFormModal @ref="addModal"
+                      Id="add-cuisinetype-modal"
+                      Title="Nouveau type de cuisine"
+                      SubmitText="Ajouter"
+                      InitialData="newCuisineType"
+                      ErrorMessage="@addError"
+                      OnSubmit="SubmitAdd" />
+
+<CuisineTypeFormModal @ref="editModal"
+                      Id="edit-cuisinetype-modal"
+                      Title="Modifier le type de cuisine"
+                      SubmitText="Sauvegarder"
+                      InitialData="editingCuisineType"
+                      ErrorMessage="@editError"
+                      OnSubmit="SubmitEdit" />
+
+<ConfirmDeleteModal @ref="deleteModal"
+                    ItemName="@(deletingCuisineType?.Name ?? "")"
+                    ErrorMessage="@deleteError"
+                    OnConfirm="SubmitDelete" />
+
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="m-0">Gestion des Types de Cuisine</h3>
+    <AuthorizeView Roles="Admin,User">
+        <button class="btn btn-success" @onclick="OpenAddModal">
+            + Nouveau type
+        </button>
+    </AuthorizeView>
+</div>
+
+<!-- DataGrid -->
+<RadzenDataGrid Data="@cuisineTypes"
+                TItem="CuisineType"
+                AllowFiltering="true"
+                FilterMode="FilterMode.Simple"
+                AllowSorting="true"
+                AllowPaging="true"
+                PageSize="5"
+                PagerHorizontalAlign="HorizontalAlign.Left"
+                ShowPagingSummary="true"
+                AllowColumnResize="true"
+                AllowAlternatingRows="true"
+                EmptyText="Aucun type de cuisine trouvé">
+    <Columns>
+        <RadzenDataGridColumn TItem="CuisineType"
+                              Property="@nameof(CuisineType.Id)"
+                              Title="ID"
+                              Width="80px"
+                              TextAlign="TextAlign.Center"
+                              Filterable="false"
+                              Sortable="false" />
+        <RadzenDataGridColumn TItem="CuisineType"
+                              Property="@nameof(CuisineType.Name)"
+                              Title="Type de cuisine" />
+        <RadzenDataGridColumn TItem="CuisineType"
+                      Title="Nb Recettes"
+                      Width="120px"
+                      TextAlign="TextAlign.Center"
+                      Sortable="false"
+                      Filterable="false">
+    <Template Context="cuisineType">
+            @(cuisineType.Recipes?.Count ?? 0)
+    </Template>
+</RadzenDataGridColumn>                              
+        <RadzenDataGridColumn TItem="CuisineType"
+                              Title="Actions"
+                              Sortable="false"
+                              Filterable="false"
+                              Width="290px"
+                              TextAlign="TextAlign.Center">
+            <Template Context="cuisineType">
+                <button class="btn btn-primary btn-sm me-1"
+                @onclick="() => GoToCuisineRecipes(cuisineType.Id)">
+            👁️ Voir Recettes
+        </button>
+                <AuthorizeView Roles="Admin,User">
+                    <button class="btn btn-warning btn-sm me-1"
+                            @onclick="() => OpenEditModal(cuisineType)">
+                        ✏️
+                    </button>
+                    <button class="btn btn-danger btn-sm"
+                            @onclick="() => OpenDeleteModal(cuisineType)">
+                        🗑️
+                    </button>
+                </AuthorizeView>
+            </Template>
+        </RadzenDataGridColumn>
+    </Columns>
+</RadzenDataGrid>
+
+@code {
+    private List<CuisineType> cuisineTypes = new();
+
+    private CuisineTypeFormModal? addModal;
+    private CuisineTypeFormModal? editModal;
+    private ConfirmDeleteModal? deleteModal;
+
+    private CuisineType newCuisineType = new();
+    private string addError = "";
+
+    private CuisineType editingCuisineType = new();
+    private string editError = "";
+
+    private CuisineType? deletingCuisineType;
+    private string deleteError = "";
+    [Inject] NavigationManager Nav { get; set; }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCuisineTypes();
+    }
+
+    private async Task LoadCuisineTypes()
+    {
+        cuisineTypes = await CuisineTypeService.GetAllCuisineTypesAsync();
+    }
+
+    // ➕ Add
+    private async Task OpenAddModal()
+    {
+        newCuisineType = new CuisineType();
+        addError = "";
+        await addModal!.Open();
+    }
+
+    private async Task SubmitAdd(CuisineType cuisineType)
+    {
+        addError = "";
+        if (string.IsNullOrWhiteSpace(cuisineType.Name))
+        {
+            addError = "Le nom est obligatoire.";
+            return;
+        }
+        try
+        {
+            await CuisineTypeService.AddCuisineTypeAsync(cuisineType);
+            await addModal!.Close();
+            await LoadCuisineTypes();
+        }
+        catch (Exception ex)
+        {
+            addError = ex.Message;
+        }
+    }
+
+    // ✏️ Edit
+    private async Task OpenEditModal(CuisineType cuisineType)
+    {
+        editingCuisineType = cuisineType;
+        editError = "";
+        await editModal!.Open();
+    }
+
+    private async Task SubmitEdit(CuisineType cuisineType)
+    {
+        editError = "";
+        if (string.IsNullOrWhiteSpace(cuisineType.Name))
+        {
+            editError = "Le nom est obligatoire.";
+            return;
+        }
+        try
+        {
+            await CuisineTypeService.UpdateCuisineTypeAsync(cuisineType);
+            await editModal!.Close();
+            await LoadCuisineTypes();
+        }
+        catch (Exception ex)
+        {
+            editError = ex.Message;
+        }
+    }
+
+    // 🗑️ Delete
+    private async Task OpenDeleteModal(CuisineType cuisineType)
+    {
+        deletingCuisineType = cuisineType;
+        deleteError = "";
+        await deleteModal!.Open();
+    }
+
+    private async Task SubmitDelete()
+    {
+        if (deletingCuisineType == null) return;
+        deleteError = "";
+        try
+        {
+            await CuisineTypeService.DeleteCuisineTypeAsync(deletingCuisineType.Id);
+            await deleteModal!.Close();
+            await LoadCuisineTypes();
+        }
+        catch (Exception ex)
+        {
+            deleteError = ex.Message;
+        }
+    }
+
+
+private void GoToCuisineRecipes(int cuisineTypeId)
+{
+    Nav.NavigateTo($"/recipes/cuisine/{cuisineTypeId}");
+}
+}

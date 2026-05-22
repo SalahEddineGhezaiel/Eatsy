@@ -1,0 +1,61 @@
+@page "/"
+@using Eatsy.Models
+@using Eatsy.Services
+@inject IRecipeService RecipeService
+
+<PageTitle>Eatsy - Accueil</PageTitle>
+
+<div class="container py-4 text-center">
+    
+    <!-- Hero Banner -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="p-5 text-white" style="background: linear-gradient(135deg, var(--eatsy-dark) 0%, var(--eatsy-primary) 100%); border-radius: 16px; box-shadow: 0 10px 25px rgba(13, 43, 74, 0.2);">
+                <div class="display-3 mb-3">🍽️</div>
+                <h1 class="display-4 fw-bold text-white">Eatsy</h1>
+                <p class="lead mt-3 mb-4 mx-auto" style="max-width: 600px; color: var(--eatsy-light);">
+                    Gérez vos recettes, suivez vos calories et planifiez vos repas en toute simplicité.
+                </p>
+                <div class="d-flex justify-content-center gap-3">
+                    <a href="/recipes" class="btn btn-light btn-lg text-primary fw-bold px-4 rounded-pill shadow-sm">
+                        Voir les recettes
+                    </a>
+                    <a href="/dashboard" class="btn btn-outline-light btn-lg px-4 rounded-pill">
+                        Tableau de bord
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Features Section -->
+    <div class="row mt-5 text-start">
+        <div class="col-md-4 mb-4">
+            <div class="card eatsy-card h-100 p-4 border-0">
+                <div class="card-body">
+                    <div class="display-5 mb-3" style="color: var(--eatsy-primary);">🍲</div>
+                    <h4 class="card-title fw-bold" style="color: var(--eatsy-dark);">Recettes & Ingrédients</h4>
+                    <p class="card-text text-muted mt-3">Trouvez, créez et modifiez vos recettes préférées avec leurs valeurs nutritionnelles complètes et précises.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card eatsy-card h-100 p-4 border-0">
+                <div class="card-body">
+                    <div class="display-5 mb-3" style="color: var(--eatsy-secondary);">📊</div>
+                    <h4 class="card-title fw-bold" style="color: var(--eatsy-dark);">Dashboard Analytics</h4>
+                    <p class="card-text text-muted mt-3">Analysez la répartition de vos recettes par catégorie et type de cuisine, et suivez votre apport en calories.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card eatsy-card h-100 p-4 border-0">
+                <div class="card-body">
+                    <div class="display-5 mb-3" style="color: var(--eatsy-primary);">📅</div>
+                    <h4 class="card-title fw-bold" style="color: var(--eatsy-dark);">Meal Planner</h4>
+                    <p class="card-text text-muted mt-3">Planifiez facilement votre semaine de repas du petit-déjeuner au dîner et contrôlez vos macros (Admin uniquement).</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,133 @@
+@page "/meal-planner"
+@using Eatsy.Models
+@using Eatsy.Services
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin,User")]
+@inject IMealPlannerService MealPlannerService
+@inject IRecipeService RecipeService
+@rendermode InteractiveServer
+
+<PageTitle>Meal Planner</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="m-0" style="color: var(--eatsy-primary);">Meal Planner</h3>
+</div>
+
+@if (plan == null || recipes == null)
+{
+    <p>Chargement du plan de repas...</p>
+}
+else
+{
+    <div class="table-responsive shadow-sm bg-white p-3 rounded" style="border-top: 4px solid var(--eatsy-primary);">
+        <table class="table table-bordered table-striped align-middle text-center">
+            <thead style="background-color: var(--eatsy-primary); color: white;">
+                <tr>
+                    <th style="width: 12%;">Jour</th>
+                    <th style="width: 25%;">Petit-déjeuner</th>
+                    <th style="width: 25%;">Déjeuner</th>
+                    <th style="width: 25%;">Dîner</th>
+                    <th style="width: 13%;">🔥 Calories</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var jour in jours)
+                {
+                    <tr>
+                        <td class="fw-bold" style="background-color: var(--eatsy-bg);">@jour</td>
+                        @foreach (var repas in repasTypes)
+                        {
+                            var meal = GetMeal(jour, repas);
+                            <td>
+                                <select class="form-select form-select-sm" 
+                                        value="@meal?.RecipeId" 
+                                        @onchange="@(e => OnRecipeChanged(jour, repas, e.Value))"
+                                        style="border-color: var(--eatsy-secondary);">
+                                    <option value="">-- Aucune recette --</option>
+                                    @foreach (var r in recipes)
+                                    {
+                                        <option value="@r.Id">@r.Name</option>
+                                    }
+                                </select>
+                            </td>
+                        }
+                        <td class="fw-bold" style="background-color: var(--eatsy-bg);">
+                            @{
+                                var dailyCal = GetDailyCalories(jour);
+                            }
+                            @if (dailyCal > 0)
+                            {
+                                <span class="badge" style="background-color: var(--eatsy-primary); font-size: 0.85rem;">
+                                    @Math.Round(dailyCal) kcal
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="text-muted" style="font-size: 0.8rem;">—</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card mt-4 shadow-sm" style="border-left: 4px solid var(--eatsy-primary);">
+        <div class="card-body">
+            <h5 class="card-title text-primary mb-0">
+                🔥 Calories totales de la semaine: <strong>@Math.Round(totalCalories) kcal</strong>
+            </h5>
+        </div>
+    </div>
+}
+
+@code {
+    private List<MealPlan>? plan;
+    private List<Recipe>? recipes;
+    private double totalCalories;
+
+    private readonly string[] jours = { "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche" };
+    private readonly string[] repasTypes = { "Petit-déjeuner", "Déjeuner", "Dîner" };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        recipes = await RecipeService.GetAllRecipesAsync();
+        plan = await MealPlannerService.GetPlanSemaineAsync();
+        totalCalories = await MealPlannerService.GetCaloriesTotalesSemaineAsync();
+    }
+
+    private MealPlan? GetMeal(string jour, string repasType)
+    {
+        return plan?.FirstOrDefault(m => m.JourSemaine == jour && m.RepasType == repasType);
+    }
+
+    private double GetDailyCalories(string jour)
+    {
+        if (plan == null) return 0;
+        return plan
+            .Where(m => m.JourSemaine == jour && m.Recipe?.RecipeIngredients != null)
+            .Sum(m => 
+            {
+                var totalCalories = m.Recipe!.RecipeIngredients!.Sum(ri =>
+                    (ri.Ingredient?.CaloriesPerUnit ?? 0) / 100.0 * ri.Quantity);
+                return totalCalories / (m.Recipe?.NumberOfPersons ?? 1);
+            });
+    }
+
+    private async Task OnRecipeChanged(string jour, string repasType, object? value)
+    {
+        int? recipeId = null;
+        if (value != null && int.TryParse(value.ToString(), out int parsedId))
+        {
+            recipeId = parsedId;
+        }
+
+        await MealPlannerService.AssignerRecetteAsync(jour, repasType, recipeId);
+        await LoadDataAsync(); // Reload to update calories and state
+    }
+}

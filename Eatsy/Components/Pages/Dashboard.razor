@@ -1,0 +1,124 @@
+@page "/dashboard"
+@using Eatsy.Services
+@inject IDashboardService DashboardService
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<PageTitle>Dashboard</PageTitle>
+
+<h3 class="mb-4 text-center" style="color: var(--eatsy-primary);">Dashboard</h3>
+
+@if (stats == null)
+{
+    <p class="text-center">Chargement des données...</p>
+}
+else
+{
+    <!-- Stat Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card text-white shadow-sm" style="background-color: var(--eatsy-dark);">
+                <div class="card-body text-center d-flex flex-column justify-content-center" style="min-height: 100px;">
+                    <h5 class="card-title text-white">🍽️ Recettes</h5>
+                    <h3 class="display-5 fw-bold mb-0 text-white">@stats.TotalRecipes</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white shadow-sm" style="background-color: var(--eatsy-primary);">
+                <div class="card-body text-center d-flex flex-column justify-content-center" style="min-height: 100px;">
+                    <h5 class="card-title text-white">🥕 Ingrédients</h5>
+                    <h3 class="display-5 fw-bold mb-0 text-white">@stats.TotalIngredients</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white shadow-sm" style="background-color: #296296;">
+                <div class="card-body text-center d-flex flex-column justify-content-center" style="min-height: 100px;">
+                    <h5 class="card-title text-white">🔥 Calories moy./Recette</h5>
+                    <h3 class="display-5 fw-bold mb-0 text-white">@Math.Round(stats.AverageCaloriesPerRecipe) <small class="fs-5 text-white">kcal</small></h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row 1 -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white border-0">
+                    <h5 class="card-title mb-0" style="color: var(--eatsy-primary);">Calories par recette (Top 8)</h5>
+                </div>
+                <div class="card-body">
+                    <div style="height: 300px;">
+                        <canvas id="barChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row 2 -->
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white border-0">
+                    <h5 class="card-title mb-0" style="color: var(--eatsy-primary);">Recettes par catégorie</h5>
+                </div>
+                <div class="card-body d-flex justify-content-center">
+                    <div style="height: 300px; width: 100%;">
+                        <canvas id="pieChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white border-0">
+                    <h5 class="card-title mb-0" style="color: var(--eatsy-primary);">Recettes par type de cuisine</h5>
+                </div>
+                <div class="card-body d-flex justify-content-center">
+                    <div style="height: 300px; width: 100%;">
+                        <canvas id="donutChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private DashboardStats? stats;
+    private Dictionary<string, int>? recettesParCategorie;
+    private Dictionary<string, int>? recettesParCuisine;
+    private Dictionary<string, double>? caloriesParRecette;
+
+    protected override async Task OnInitializedAsync()
+    {
+        stats = await DashboardService.GetStatistiquesGeneralesAsync();
+        recettesParCategorie = await DashboardService.GetRecettesParCategorieAsync();
+        recettesParCuisine = await DashboardService.GetRecettesParCuisineAsync();
+        caloriesParRecette = await DashboardService.GetCaloriesParRecetteAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (stats != null)
+        {
+            if (caloriesParRecette != null && caloriesParRecette.Any())
+            {
+                await JSRuntime.InvokeVoidAsync("initBarChart", "barChart", caloriesParRecette.Keys.ToArray(), caloriesParRecette.Values.ToArray());
+            }
+
+            if (recettesParCategorie != null && recettesParCategorie.Any())
+            {
+                await JSRuntime.InvokeVoidAsync("initPieChart", "pieChart", recettesParCategorie.Keys.ToArray(), recettesParCategorie.Values.ToArray());
+            }
+
+            if (recettesParCuisine != null && recettesParCuisine.Any())
+            {
+                await JSRuntime.InvokeVoidAsync("initDonutChart", "donutChart", recettesParCuisine.Keys.ToArray(), recettesParCuisine.Values.ToArray());
+            }
+        }
+    }
+}

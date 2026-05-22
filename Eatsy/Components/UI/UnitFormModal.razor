@@ -1,0 +1,58 @@
+@using Eatsy.Models
+@using Eatsy.Components.UI
+
+<ModalDialog @ref="modal" Id="@Id" Title="@Title">
+    <ChildContent>
+        <div class="mb-3">
+            <label class="form-label">Nom de l'unité</label>
+            <input type="text" class="form-control" @bind="formData.Name" placeholder="Ex: Kilogramme" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Abréviation</label>
+            <input type="text" class="form-control" @bind="formData.Abbreviation" placeholder="Ex: kg" />
+        </div>
+        @if (!string.IsNullOrEmpty(ErrorMessage))
+        {
+            <div class="alert alert-danger py-2">@ErrorMessage</div>
+        }
+    </ChildContent>
+    <FooterContent>
+        <button class="btn btn-secondary" @onclick="HandleClose">Annuler</button>
+        <button class="btn btn-primary" @onclick="HandleSubmit">@SubmitText</button>
+    </FooterContent>
+</ModalDialog>
+
+@code {
+    private ModalDialog? modal;
+    private Unit formData = new();
+
+    [Parameter, EditorRequired] public string Id { get; set; } = "";
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string SubmitText { get; set; } = "Enregistrer";
+    [Parameter] public Unit? InitialData { get; set; }
+    [Parameter] public string ErrorMessage { get; set; } = "";
+    [Parameter] public EventCallback<Unit> OnSubmit { get; set; }
+
+    public async Task Open()
+    {
+        // Clone the data to avoid modifying the original
+        formData = InitialData != null 
+            ? new Unit { Id = InitialData.Id, Name = InitialData.Name, Abbreviation = InitialData.Abbreviation }
+            : new Unit();
+        await modal!.Open();
+    }
+
+    public async Task Close() => await modal!.Close();
+
+    private async Task HandleClose()
+    {
+        formData = new();
+        await modal!.Close();
+    }
+
+    private async Task HandleSubmit()
+    {
+        await OnSubmit.InvokeAsync(formData);
+        formData = new();
+    }
+}

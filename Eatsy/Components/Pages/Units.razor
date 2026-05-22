@@ -1,0 +1,206 @@
+@page "/units"
+@using Eatsy.Models
+@using Eatsy.Services
+@using Eatsy.Components.UI
+@rendermode InteractiveServer
+@inject IUnitService UnitService
+
+<!-- Modals -->
+<UnitFormModal @ref="addModal"
+               Id="add-unit-modal"
+               Title="Nouvelle unité"
+               SubmitText="Ajouter"
+               InitialData="newUnit"
+               ErrorMessage="@addError"
+               OnSubmit="SubmitAdd" />
+
+<UnitFormModal @ref="editModal"
+               Id="edit-unit-modal"
+               Title="Modifier l'unité"
+               SubmitText="Sauvegarder"
+               InitialData="editingUnit"
+               ErrorMessage="@editError"
+               OnSubmit="SubmitEdit" />
+
+<ConfirmDeleteModal @ref="deleteModal"
+                    ItemName="@(deletingUnit?.Name ?? "")"
+                    ErrorMessage="@deleteError"
+                    OnConfirm="SubmitDelete" />
+
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="m-0">Gestion des Unités</h3>
+    <AuthorizeView Roles="Admin,User">
+        <button class="btn btn-success" @onclick="OpenAddModal">
+            + Nouvelle unité
+        </button>
+    </AuthorizeView>
+</div>
+
+<!-- DataGrid -->
+<RadzenDataGrid Data="@units"
+                TItem="Unit"
+                AllowFiltering="true"
+                FilterMode="FilterMode.Simple"
+                AllowSorting="true"
+                AllowPaging="true"
+                PageSize="5"
+                PagerHorizontalAlign="HorizontalAlign.Left"
+                ShowPagingSummary="true"
+                AllowColumnResize="true"
+                AllowAlternatingRows="true"
+                EmptyText="Aucune unité trouvée">
+    <Columns>
+        <RadzenDataGridColumn TItem="Unit"
+                              Property="@nameof(Unit.Id)"
+                              Title="ID"
+                              Width="80px"
+                              TextAlign="TextAlign.Center"
+                              Filterable="false"
+                              Sortable="false" />
+        <RadzenDataGridColumn TItem="Unit"
+                              Property="@nameof(Unit.Name)"
+                              Title="Nom" />
+        <RadzenDataGridColumn TItem="Unit"
+                              Property="@nameof(Unit.Abbreviation)"
+                              Title="Abréviation"
+                              Width="130px"
+                              TextAlign="TextAlign.Center" />
+        <RadzenDataGridColumn TItem="Unit"
+                              Title="Actions"
+                              Sortable="false"
+                              Filterable="false"
+                              Width="130px"
+                              TextAlign="TextAlign.Center">
+            <Template Context="unit">
+                <AuthorizeView Roles="Admin,User">
+                    <button class="btn btn-warning btn-sm me-1"
+                            @onclick="() => OpenEditModal(unit)">
+                        ✏️
+                    </button>
+                    <button class="btn btn-danger btn-sm"
+                            @onclick="() => OpenDeleteModal(unit)">
+                        🗑️
+                    </button>
+                </AuthorizeView>
+            </Template>
+        </RadzenDataGridColumn>
+    </Columns>
+</RadzenDataGrid>
+
+@code {
+    private List<Unit> units = new();
+
+    private UnitFormModal? addModal;
+    private UnitFormModal? editModal;
+    private ConfirmDeleteModal? deleteModal;
+
+    private Unit newUnit = new();
+    private string addError = "";
+
+    private Unit editingUnit = new();
+    private string editError = "";
+
+    private Unit? deletingUnit;
+    private string deleteError = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUnits();
+    }
+
+    private async Task LoadUnits()
+    {
+        units = await UnitService.GetAllUnitsAsync();
+    }
+
+    // ➕ Add
+    private async Task OpenAddModal()
+    {
+        newUnit = new Unit();
+        addError = "";
+        await addModal!.Open();
+    }
+
+    private async Task SubmitAdd(Unit unit)
+    {
+        addError = "";
+        if (string.IsNullOrWhiteSpace(unit.Name))
+        {
+            addError = "Le nom est obligatoire.";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(unit.Abbreviation))
+        {
+            addError = "L'abréviation est obligatoire.";
+            return;
+        }
+        try
+        {
+            await UnitService.AddUnitAsync(unit);
+            await addModal!.Close();
+            await LoadUnits();
+        }
+        catch (Exception ex)
+        {
+            addError = ex.Message;
+        }
+    }
+
+    // ✏️ Edit
+    private async Task OpenEditModal(Unit unit)
+    {
+        editingUnit = unit;
+        editError = "";
+        await editModal!.Open();
+    }
+
+    private async Task SubmitEdit(Unit unit)
+    {
+        editError = "";
+        if (string.IsNullOrWhiteSpace(unit.Name))
+        {
+            editError = "Le nom est obligatoire.";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(unit.Abbreviation))
+        {
+            editError = "L'abréviation est obligatoire.";
+            return;
+        }
+        try
+        {
+            await UnitService.UpdateUnitAsync(unit);
+            await editModal!.Close();
+            await LoadUnits();
+        }
+        catch (Exception ex)
+        {
+            editError = ex.Message;
+        }
+    }
+
+    // 🗑️ Delete
+    private async Task OpenDeleteModal(Unit unit)
+    {
+        deletingUnit = unit;
+        deleteError = "";
+        await deleteModal!.Open();
+    }
+
+    private async Task SubmitDelete()
+    {
+        if (deletingUnit == null) return;
+        deleteError = "";
+        try
+        {
+            await UnitService.DeleteUnitAsync(deletingUnit.Id);
+            await deleteModal!.Close();
+            await LoadUnits();
+        }
+        catch (Exception ex)
+        {
+            deleteError = ex.Message;
+        }
+    }
+}

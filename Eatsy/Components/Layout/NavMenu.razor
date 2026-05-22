@@ -1,0 +1,120 @@
+<nav class="navbar navbar-expand-xl navbar-dark" style="background-image: linear-gradient(90deg, var(--eatsy-dark) 0%, var(--eatsy-primary) 100%); padding: 0.75rem 1.5rem;">
+    <div class="container-fluid">
+        <a class="navbar-brand fw-bold" href="" style="font-size: 1.5rem; letter-spacing: 1px;">Eatsy 🍽️</a>
+        
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto mb-2 mb-xl-0 align-items-center">
+                <li class="nav-item">
+                    <NavLink class="nav-link rounded px-3 mx-1" href="" Match="NavLinkMatch.All">
+                        <span aria-hidden="true" class="me-1">🏠</span> Accueil
+                    </NavLink>
+                </li>
+                <li class="nav-item">
+                    <NavLink class="nav-link rounded px-3 mx-1" href="dashboard">
+                        <span aria-hidden="true" class="me-1">📊</span> Dashboard
+                    </NavLink>
+                </li>
+                
+                <AuthorizeView Roles="Admin,User">
+                    <li class="nav-item">
+                        <NavLink class="nav-link rounded px-3 mx-1" href="meal-planner">
+                            <span aria-hidden="true" class="me-1">📅</span> Meal Planner
+                        </NavLink>
+                    </li>
+                    <li class="nav-item">
+                        <NavLink class="nav-link rounded px-3 mx-1" href="categories">
+                            <span aria-hidden="true" class="me-1">🏷️</span> Catégories
+                        </NavLink>
+                    </li>
+                    <li class="nav-item">
+                        <NavLink class="nav-link rounded px-3 mx-1" href="cuisine-types">
+                            <span aria-hidden="true" class="me-1">🌍</span> Cuisines
+                        </NavLink>
+                    </li>
+                    <li class="nav-item">
+                        <NavLink class="nav-link rounded px-3 mx-1" href="units">
+                            <span aria-hidden="true" class="me-1">⚖️</span> Unités
+                        </NavLink>
+                    </li>
+                </AuthorizeView>
+
+                <li class="nav-item">
+                    <NavLink class="nav-link rounded px-3 mx-1" href="ingredients">
+                        <span aria-hidden="true" class="me-1">🥕</span> Ingrédients
+                    </NavLink>
+                </li>
+                <li class="nav-item">
+                    <NavLink class="nav-link rounded px-3 mx-1" href="recipes">
+                        <span aria-hidden="true" class="me-1">🍽️</span> Recettes
+                    </NavLink>
+                </li>
+
+                <AuthorizeView Roles="Admin">
+                    <li class="nav-item">
+                        <NavLink class="nav-link rounded px-3 mx-1" href="admin/users">
+                            <span aria-hidden="true" class="me-1">👥</span> Utilisateurs
+                        </NavLink>
+                    </li>
+                </AuthorizeView>
+            </ul>
+
+            <ul class="navbar-nav align-items-center">
+                <AuthorizeView>
+                    <Authorized>
+                        <li class="nav-item text-white me-3 d-flex align-items-center">
+                            <small class="me-2">Bonjour, @context.User.Identity?.Name</small>
+                            @if (context.User.IsInRole("Admin"))
+                            {
+                                <span class="badge bg-danger">Admin</span>
+                            }
+                            else if (context.User.IsInRole("User"))
+                            {
+                                <span class="badge bg-primary">User</span>
+                            }
+                        </li>
+                        <li class="nav-item">
+                            <form action="/Account/Logout" method="post" class="m-0">
+                                <AntiforgeryToken />
+                                <button type="submit" class="nav-link btn btn-link text-white rounded px-3 mx-1" style="text-decoration: none;">
+                                    <span aria-hidden="true" class="me-1">🚪</span> Logout
+                                </button>
+                            </form>
+                        </li>
+                    </Authorized>
+                    <NotAuthorized>
+                        <li class="nav-item">
+                            <NavLink class="nav-link rounded px-3 mx-1" href="Account/Register">
+                                <span aria-hidden="true" class="me-1">📝</span> Register
+                            </NavLink>
+                        </li>
+                        <li class="nav-item">
+                            <NavLink class="nav-link rounded px-3 mx-1" href="Account/Login">
+                                <span aria-hidden="true" class="me-1">🔑</span> Login
+                            </NavLink>
+                        </li>
+                    </NotAuthorized>
+                </AuthorizeView>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<style>
+    /* Styling pour le hover du navbar */
+    .navbar .nav-link {
+        transition: background-color 0.2s;
+    }
+    .navbar .nav-link:hover {
+        background-color: rgba(255, 255, 255, 0.1) !important;
+        color: white !important;
+    }
+    .navbar .nav-link.active {
+        background-color: rgba(255, 255, 255, 0.25) !important;
+        color: white !important;
+        font-weight: bold;
+    }
+</style>

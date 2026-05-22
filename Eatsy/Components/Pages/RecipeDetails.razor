@@ -1,0 +1,120 @@
+@page "/recipes/{Id:int}"
+@using Eatsy.Models
+@using Eatsy.Services
+@inject IRecipeService RecipeService
+@inject NavigationManager Nav
+@rendermode InteractiveServer
+
+
+<h3>Détails de la recette</h3>
+
+<button class="btn btn-secondary mb-3" @onclick="GoBack">
+    ⬅️ Retour
+</button>
+
+@if (recipe == null)
+{
+    <p>Chargement...</p>
+}
+else
+{
+    <div class="card shadow-sm">
+        @if (!string.IsNullOrEmpty(recipe.ImageUrl))
+        {
+            <img src="@recipe.ImageUrl" class="card-img-top" style="height:500px; object-fit:cover;" />
+        }
+
+        <div class="card-body">
+            <h3>@recipe.Name</h3>
+
+            <p><strong>Catégorie:</strong> @recipe.Category?.Name</p>
+            <p><strong>Cuisine:</strong> @recipe.CuisineType?.Name</p>
+
+            <div class="d-flex align-items-center gap-2 mb-3">
+    <strong>👥 Personnes:</strong>
+
+    <button class="btn btn-outline-secondary btn-sm"
+            @onclick="DecreasePersons">-</button>
+
+    <span>@currentPersons</span>
+
+    <button class="btn btn-outline-secondary btn-sm"
+            @onclick="IncreasePersons">+</button>
+</div>
+            <p><strong>🔥 Calories totales:</strong> @Math.Round(CalculateTotalCalories(recipe), 0) kcal</p>
+
+<p><strong>⚡ Calories / personne:</strong> @Math.Round(CaloriesPerPerson(recipe), 0) kcal</p>
+
+            <hr />
+
+            <h5>Ingrédients</h5>
+            <ul>
+                @foreach (var ri in recipe.RecipeIngredients!)
+                {
+                    <li>
+                        @ri.Ingredient?.Name :
+                        @Math.Round(ri.Quantity * currentPersons / basePersons, 0) @ri.Ingredient?.Unit?.Abbreviation
+                    </li>
+                }
+            </ul>
+
+            <hr />
+
+            <h5>Préparation</h5>
+            <p>@recipe.CookingMethod</p>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private int basePersons;
+    private int currentPersons;
+
+    private Recipe? recipe;
+
+    protected override async Task OnInitializedAsync()
+    {
+        recipe = await RecipeService.GetRecipeByIdAsync(Id);
+
+        if (recipe != null)
+    {
+        basePersons = recipe.NumberOfPersons;
+        currentPersons = recipe.NumberOfPersons;
+    }
+    }
+
+    private double CalculateTotalCalories(Recipe recipe)
+{
+    if (recipe.RecipeIngredients == null)
+        return 0;
+
+    return recipe.RecipeIngredients.Sum(ri =>
+        (ri.Ingredient?.CaloriesPerUnit ?? 0) / 100.0
+        * (ri.Quantity * currentPersons / basePersons)
+    );
+}
+
+private double CaloriesPerPerson(Recipe recipe)
+{
+    if (currentPersons == 0) return 0;
+
+    return CalculateTotalCalories(recipe) / currentPersons;
+}
+
+    private void GoBack()
+    {
+        Nav.NavigateTo("/recipes");
+    }
+
+    private void IncreasePersons()
+{
+    currentPersons++;
+}
+
+private void DecreasePersons()
+{
+    if (currentPersons > 1)
+        currentPersons--;
+}
+}

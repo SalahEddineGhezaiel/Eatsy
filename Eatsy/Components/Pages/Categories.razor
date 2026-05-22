@@ -1,0 +1,214 @@
+@page "/categories"
+@using Eatsy.Models
+@using Eatsy.Services
+@using Eatsy.Components.UI
+@rendermode InteractiveServer
+@inject ICategoryService CategoryService
+
+<!-- Modals -->
+<CategoryFormModal @ref="addModal"
+                   Id="add-category-modal"
+                   Title="Nouvelle catégorie"
+                   SubmitText="Ajouter"
+                   InitialData="newCategory"
+                   ErrorMessage="@addError"
+                   OnSubmit="SubmitAdd" />
+
+<CategoryFormModal @ref="editModal"
+                   Id="edit-category-modal"
+                   Title="Modifier la catégorie"
+                   SubmitText="Sauvegarder"
+                   InitialData="editingCategory"
+                   ErrorMessage="@editError"
+                   OnSubmit="SubmitEdit" />
+
+<ConfirmDeleteModal @ref="deleteModal"
+                    ItemName="@(deletingCategory?.Name ?? "")"
+                    ErrorMessage="@deleteError"
+                    OnConfirm="SubmitDelete" />
+
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="m-0">Gestion des Catégories</h3>
+    <AuthorizeView Roles="Admin,User">
+        <button class="btn btn-success" @onclick="OpenAddModal">
+            + Nouvelle catégorie
+        </button>
+    </AuthorizeView>
+</div>
+
+<!-- DataGrid -->
+<RadzenDataGrid Data="@categories"
+                TItem="Category"
+                AllowFiltering="true"
+                FilterMode="FilterMode.Simple"
+                AllowSorting="true"
+                AllowPaging="true"
+                PageSize="5"
+                PagerHorizontalAlign="HorizontalAlign.Left"
+                ShowPagingSummary="true"
+                AllowColumnResize="true"
+                AllowAlternatingRows="true"
+                EmptyText="Aucune catégorie trouvée">
+    <Columns>
+        <RadzenDataGridColumn TItem="Category"
+                              Property="@nameof(Category.Id)"
+                              Title="ID"
+                              Width="80px"
+                              TextAlign="TextAlign.Center"
+                              Filterable="false"
+                              Sortable="false" />
+        <RadzenDataGridColumn TItem="Category"
+                              Property="@nameof(Category.Name)"
+                              Title="Nom de la catégorie" />
+        <RadzenDataGridColumn TItem="Category"
+                      Title="Nb Recettes"
+                      Width="120px"
+                      TextAlign="TextAlign.Center"
+                      Sortable="false"
+                      Filterable="false">
+    <Template Context="category">
+        @(category.Recipes?.Count ?? 0)
+    </Template>
+</RadzenDataGridColumn>                              
+        <RadzenDataGridColumn TItem="Category"
+                              Title="Actions"
+                              Sortable="false"
+                              Filterable="false"
+                              Width="290px"
+                              TextAlign="TextAlign.Center">
+            <Template Context="category">
+
+                <button class="btn btn-primary btn-sm me-1"
+                @onclick="() => GoToCategoryRecipes(category.Id)">
+            👁️ Voir Recettes
+        </button>
+                <AuthorizeView Roles="Admin,User">
+                    <button class="btn btn-warning btn-sm me-1"
+                            @onclick="() => OpenEditModal(category)">
+                        ✏️
+                    </button>
+                    <button class="btn btn-danger btn-sm"
+                            @onclick="() => OpenDeleteModal(category)">
+                        🗑️
+                    </button>
+                </AuthorizeView>
+            </Template>
+        </RadzenDataGridColumn>
+    </Columns>
+</RadzenDataGrid>
+
+@code {
+    private List<Category> categories = new();
+
+    private CategoryFormModal? addModal;
+    private CategoryFormModal? editModal;
+    private ConfirmDeleteModal? deleteModal;
+
+    private Category newCategory = new();
+    private string addError = "";
+
+    private Category editingCategory = new();
+    private string editError = "";
+
+    private Category? deletingCategory;
+    private string deleteError = "";
+    [Inject] NavigationManager Nav { get; set; }
+
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCategories();
+    }
+
+    private async Task LoadCategories()
+    {
+        categories = await CategoryService.GetAllCategoriesAsync();
+    }
+
+    // ➕ Add
+    private async Task OpenAddModal()
+    {
+        newCategory = new Category();
+        addError = "";
+        await addModal!.Open();
+    }
+
+    private async Task SubmitAdd(Category category)
+    {
+        addError = "";
+        if (string.IsNullOrWhiteSpace(category.Name))
+        {
+            addError = "Le nom est obligatoire.";
+            return;
+        }
+        try
+        {
+            await CategoryService.AddCategoryAsync(category);
+            await addModal!.Close();
+            await LoadCategories();
+        }
+        catch (Exception ex)
+        {
+            addError = ex.Message;
+        }
+    }
+
+    // ✏️ Edit
+    private async Task OpenEditModal(Category category)
+    {
+        editingCategory = category;
+        editError = "";
+        await editModal!.Open();
+    }
+
+    private async Task SubmitEdit(Category category)
+    {
+        editError = "";
+        if (string.IsNullOrWhiteSpace(category.Name))
+        {
+            editError = "Le nom est obligatoire.";
+            return;
+        }
+        try
+        {
+            await CategoryService.UpdateCategoryAsync(category);
+            await editModal!.Close();
+            await LoadCategories();
+        }
+        catch (Exception ex)
+        {
+            editError = ex.Message;
+        }
+    }
+
+    // 🗑️ Delete
+    private async Task OpenDeleteModal(Category category)
+    {
+        deletingCategory = category;
+        deleteError = "";
+        await deleteModal!.Open();
+    }
+
+    private async Task SubmitDelete()
+    {
+        if (deletingCategory == null) return;
+        deleteError = "";
+        try
+        {
+            await CategoryService.DeleteCategoryAsync(deletingCategory.Id);
+            await deleteModal!.Close();
+            await LoadCategories();
+        }
+        catch (Exception ex)
+        {
+            deleteError = ex.Message;
+        }
+    }
+
+    private void GoToCategoryRecipes(int categoryId)
+{
+    Nav.NavigateTo($"/recipes/category/{categoryId}");
+}
+}
